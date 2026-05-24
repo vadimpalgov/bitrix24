@@ -1,0 +1,18 @@
+{
+    "name": "local/bitrix24",
+    "description": "Local modules for Bitrix24",
+    "type": "project",
+    "require": {
+        "php": ">=8.3",
+        "php-mcp/server": "^2.0",
+        "react/promise": "^3.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "Bit\\Mcp\\": "modules/bit.mcp/lib/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}

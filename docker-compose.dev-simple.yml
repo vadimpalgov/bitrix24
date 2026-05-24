@@ -1,0 +1,55 @@
+services:
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: ${COMPOSE_PROJECT_NAME}-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./:/var/www/bitrix
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - php
+    networks:
+      - internal
+
+  php:
+    build:
+      context: ./docker/php
+      args:
+        PUID: ${PUID:-1000}
+        PGID: ${PGID:-1000}
+    container_name: ${COMPOSE_PROJECT_NAME}-php
+    restart: unless-stopped
+    volumes:
+      - ./:/var/www/bitrix
+    networks:
+      - internal
+
+  db:
+    build: ./docker/mysql
+    container_name: ${COMPOSE_PROJECT_NAME}-db
+    restart: unless-stopped
+    volumes:
+      - ./docker/mysql/data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      TZ: Europe/Moscow
+    networks:
+      - internal
+
+  memcached:
+    image: memcached:latest
+    container_name: ${COMPOSE_PROJECT_NAME}-memcached
+    restart: unless-stopped
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge

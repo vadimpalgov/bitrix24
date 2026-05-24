@@ -1,0 +1,59 @@
+# ─── Bitrix core (ядро не трекаем) ────────────────────────────────────────────
+/bitrix/
+!/bitrix/php_interface/
+
+# ─── Uploads & cache ──────────────────────────────────────────────────────────
+/upload/
+/bitrix/cache/
+/bitrix/managed_cache/
+/bitrix/stack_cache/
+/bitrix/html_pages/
+
+# ─── PHP dependencies ─────────────────────────────────────────────────────────
+/vendor/
+/local/vendor/
+composer.lock
+
+# ─── Node / frontend ──────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-error.log
+.pnp/
+.pnp.js
+
+# ─── IDE & editors ────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.project
+.settings/
+*.iml
+
+# ─── Claude Code ──────────────────────────────────────────────────────────────
+.claude/
+
+# ─── Environment & secrets ────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ─── OS мусор ─────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Logs & temp ──────────────────────────────────────────────────────────────
+*.log
+*.tmp
+*.bak
+*.swp
+*.orig
+/tmp/
+
+# ─── Traefik ──────────────────────────────────────────────────────────────────
+traefik/acme.json
+/docker/mysql/data/

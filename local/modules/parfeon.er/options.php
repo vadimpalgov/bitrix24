@@ -40,10 +40,12 @@ $getStages = function($entityTypeId) {
 };
 
 // Текущие ID для получения стадий
-$erSmartId = \COption::GetOptionString($moduleId, 'ER_SMART_PROCESS_ID');
-$apSmartId = \COption::GetOptionString($moduleId, 'AP_SMART_PROCESS_ID');
-$erStages = $getStages($erSmartId);
-$apStages = $getStages($apSmartId);
+$erSmartId  = \COption::GetOptionString($moduleId, 'ER_SMART_PROCESS_ID');
+$apSmartId  = \COption::GetOptionString($moduleId, 'AP_SMART_PROCESS_ID');
+$alpSmartId = \COption::GetOptionString($moduleId, 'ALP_SMART_PROCESS_ID');
+$ppSmartId  = \COption::GetOptionString($moduleId, 'PP_SMART_PROCESS_ID');
+$erStages  = $getStages($erSmartId);
+$apStages  = $getStages($apSmartId);
 
 /**
  * Описание всех настроек (для автоматизации сохранения)
@@ -59,6 +61,9 @@ $allOptions = [
                 'AP_START_STATUS'     => 'Начальный статус (AP)',
                 'AP_APPROVE_STATUS'   => 'Статус одобрения (AP)',
                 'AP_REJECT_STATUS'    => 'Статус отклонения (AP)',
+
+                'ALP_SMART_PROCESS_ID' => 'Смарт-процесс для Профилей согласования',
+                'PP_SMART_PROCESS_ID'  => 'Смарт-процесс для Участников профиля',
 
             // НОВЫЕ: Иерархия и Директор
                 'LA_ADD_ALL_MANAGERS' => 'Включать всех руководителей по цепочке иерархии',
@@ -156,6 +161,13 @@ $tabControl = new CAdminTabControl('tabControl', $tabs);
         $renderSelect('AP_APPROVE_STATUS', $allOptions['main']['AP_APPROVE_STATUS'], $apStages);
         $renderSelect('AP_REJECT_STATUS', $allOptions['main']['AP_REJECT_STATUS'], $apStages);
     }
+
+    echo '<tr class="heading"><td colspan="2">Профили согласования</td></tr>';
+
+    $renderSelect('ALP_SMART_PROCESS_ID', $allOptions['main']['ALP_SMART_PROCESS_ID'], $entityTypes);
+    $renderSelect('PP_SMART_PROCESS_ID',  $allOptions['main']['PP_SMART_PROCESS_ID'],  $entityTypes);
+
+    echo '<tr class="heading"><td colspan="2">Логика иерархии руководителей</td></tr>';
 
     $renderCheckbox('LA_ADD_ALL_MANAGERS', $allOptions['main']['LA_ADD_ALL_MANAGERS']);
     $renderCheckbox('LA_EXCLUDE_DIRECTOR', $allOptions['main']['LA_EXCLUDE_DIRECTOR']);

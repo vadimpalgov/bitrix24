@@ -25,7 +25,6 @@ class DayStartChecker extends Action
         }
 
         $startDate = $item->get(EmployeeRequest::DATE_START);
-        ray('$startDate', $startDate);
         if (!$startDate instanceof Date) {
             return $result;
         }

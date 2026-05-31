@@ -18,8 +18,8 @@ class ApproverResolver extends Action
         /** @var \Parfeon\Er\Services\CreateApprovers $createApproversService */
         $createApproversService = ServiceLocator::getInstance()->get('parfeon.er.service.create.approvers');
 
-        if($createApproversService){
-            $createApproversService->create($item);
+        if ($createApproversService) {
+            $createApproversService->createPhase(1, $item);
         }
 
         return $result;

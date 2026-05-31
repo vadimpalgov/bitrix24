@@ -6,39 +6,37 @@ use Bitrix\Crm\Item;
 use Bitrix\Crm\Service\Container;
 use Bitrix\Crm\Service\Operation\Action;
 use Bitrix\Main\Config\Option;
+use Bitrix\Main\DI\ServiceLocator;
 use Bitrix\Main\Error;
 use Bitrix\Main\Result;
-use Bitrix\Main\Loader;
-use Parfeon\Er\Mapping;
+use Parfeon\Er\Mapping\Approvers;
+use Parfeon\Er\Mapping\EmployeeRequest;
+use Parfeon\Er\Services\CreateApprovers;
 
 class ChangeStatus extends Action
 {
+    private const MODULE_ID = 'parfeon.er';
+
     public function process(Item $item): Result
     {
         $result = new Result();
-        $moduleId = 'parfeon.er';
 
-        // 1. Проверяем, изменилась ли стадия
         if (!$item->isChangedStageId()) {
             return $result;
         }
 
-        $currentStageId = $item->getStageId();
-
-        // 2. Получаем настройки стадий из модуля
-        $apApprove = Option::get($moduleId, 'AP_APPROVE_STATUS');
-        $apReject = Option::get($moduleId, 'AP_REJECT_STATUS');
-        $erApprove = Option::get($moduleId, 'ER_APPROVE_STATUS');
-        $erReject = Option::get($moduleId, 'ER_REJECT_STATUS');
-        $erEntityTypeId = (int)Option::get($moduleId, 'ER_SMART_PROCESS_ID');
+        $apApprove = Option::get(self::MODULE_ID, 'AP_APPROVE_STATUS');
+        $apReject  = Option::get(self::MODULE_ID, 'AP_REJECT_STATUS');
+        $erApprove = Option::get(self::MODULE_ID, 'ER_APPROVE_STATUS');
+        $erReject  = Option::get(self::MODULE_ID, 'ER_REJECT_STATUS');
+        $erEntityTypeId = (int)Option::get(self::MODULE_ID, 'ER_SMART_PROCESS_ID');
 
         if (!$apApprove || !$apReject || !$erApprove || !$erReject || !$erEntityTypeId) {
             return $result;
         }
 
-        // Поле привязки к родителю (динамическое название типа PARENT_ID_156)
         $parentFieldName = 'PARENT_ID_' . $erEntityTypeId;
-        $parentId = (int)$item->get($parentFieldName);
+        $parentId        = (int)$item->get($parentFieldName);
 
         if ($parentId <= 0) {
             return $result;
@@ -51,123 +49,108 @@ class ChangeStatus extends Action
             return $result;
         }
 
-        if ($currentStageId === $apReject) {
+        $currentStage = $item->getStageId();
 
-            $reasonForRejection = $item->get(Mapping\Approvers::REASON_FOR_REJECTION);
-            if(!$reasonForRejection){
+        // ── REJECT ────────────────────────────────────────────────────────────
+        if ($currentStage === $apReject) {
+            $reason = $item->get(Approvers::REASON_FOR_REJECTION);
+
+            if (!$reason) {
                 $result->addError(new Error('Не указана причина отклонения заявки'));
                 return $result;
             }
 
-            $updateParentResult = $this->updateParentStatus($factoryER, $parentId, $erReject, $reasonForRejection);
-            if(!$updateParentResult->isSuccess()) {
-                $result->addErrors($updateParentResult->getErrors());
-            }
+            return $this->updateParentStatus($factoryER, $parentId, $erReject, $reason);
+        }
+
+        // ── APPROVE ───────────────────────────────────────────────────────────
+        if ($currentStage !== $apApprove) {
             return $result;
         }
 
-        if ($currentStageId === $apApprove) {
+        $phase = (int)$item->get(Approvers::PHASE);
+        $order = (int)$item->get(Approvers::ORDER);
 
-            $siblings = $factoryAP->getItems([
-                'filter' => [
-                    '=' . $parentFieldName => $parentId,
-                    '!=ID' => $item->getId()
-                ]
-            ]);
+        $erItem = $factoryER->getItem($parentId);
+        if (!$erItem) {
+            return $result;
+        }
 
-            $allApproved = true;
-            $anyRejected = false;
+        /** @var CreateApprovers $createApprovers */
+        $createApprovers = ServiceLocator::getInstance()->get('parfeon.er.service.create.approvers');
 
-            $hrDepartmentId = $this->getHrDepartmentId();
-            $isCurrentRequesterHr = $this->isUserInDepartment($item->getAssignedById(), $hrDepartmentId);
+        $siblings = $factoryAP->getItems([
+            'filter' => [
+                '='  . $parentFieldName  => $parentId,
+                '='  . Approvers::PHASE  => $phase,
+                '!=' . 'ID'              => $item->getId(),
+            ],
+        ]);
 
-            $hrApprovedBySomeone = $isCurrentRequesterHr;
+        switch ($phase) {
 
-            foreach ($siblings as $sibling) {
-                $siblingStage = $sibling->getStageId();
-                $siblingUserId = $sibling->getAssignedById();
-                $isSiblingHr = $this->isUserInDepartment($siblingUserId, $hrDepartmentId);
+            // ── Фаза 1: HR — достаточно одного ──────────────────────────────
+            case 1:
+                // Проверяем: не отклонил ли кто-то другой из HR
+                foreach ($siblings as $sibling) {
+                    if ($sibling->getStageId() === $apReject) {
+                        $reason = $sibling->get(Approvers::REASON_FOR_REJECTION) ?: 'Отклонено HR-менеджером';
+                        return $this->updateParentStatus($factoryER, $parentId, $erReject, $reason);
+                    }
+                }
+                // Хватит одного одобрения — запускаем фазу 2
+                $createApprovers->createPhase(2, $erItem);
+                break;
 
-                if ($siblingStage === $apReject) {
+            // ── Фаза 2: РП — нужны все ──────────────────────────────────────
+            case 2:
+                foreach ($siblings as $sibling) {
+                    if ($sibling->getStageId() === $apReject) {
+                        $reason = $sibling->get(Approvers::REASON_FOR_REJECTION) ?: 'Отклонено руководителем проекта';
+                        return $this->updateParentStatus($factoryER, $parentId, $erReject, $reason);
+                    }
 
-                    $reasonForRejection = $item->get(Mapping\Approvers::REASON_FOR_REJECTION);
-                    if(!$reasonForRejection){
-                        $result->addError(new Error('Не указана причина отклонения заявки'));
+                    if ($sibling->getStageId() !== $apApprove) {
+                        // Ещё не все одобрили — ждём
                         return $result;
                     }
-
-                    $updateParentResult = $this->updateParentStatus($factoryER, $parentId, $erReject, $reasonForRejection);
-                    if(!$updateParentResult->isSuccess()) {
-                        $result->addErrors($updateParentResult->getErrors());
-                    }
-                    return $result;
                 }
+                // Все одобрили — запускаем фазу 3
+                $createApprovers->createPhase(3, $erItem, 1);
+                break;
 
-                if ($isSiblingHr) {
-                    if ($siblingStage === $apApprove) {
-                        $hrApprovedBySomeone = true;
-                    }
+            // ── Фаза 3: Руководители — последовательно ──────────────────────
+            case 3:
+                $totalSteps = $createApprovers->getPhase3TotalSteps($erItem);
+                $nextOrder  = $order + 1;
+
+                if ($nextOrder <= $totalSteps) {
+                    // Есть следующий — создаём
+                    $createApprovers->createPhase(3, $erItem, $nextOrder);
                 } else {
-                    if ($siblingStage !== $apApprove) {
-                        $allApproved = false;
-                    }
+                    // Последний согласовал — одобряем ER
+                    return $this->updateParentStatus($factoryER, $parentId, $erApprove);
                 }
-            }
-            ray('$allApproved', $allApproved);
-            ray('$hrApprovedBySomeone', $hrApprovedBySomeone);
-            if ($allApproved && $hrApprovedBySomeone) {
-                $updateParentResult = $this->updateParentStatus($factoryER, $parentId, $erApprove);
-            }
-
-//            elseif ($allApproved) {
-//                $updateParentResult = $this->updateParentStatus($factoryER, $parentId, $erApprove);
-//            }
-
-            if($updateParentResult && !$updateParentResult->isSuccess()) {
-                $result->addErrors($updateParentResult->getErrors());
-            }
+                break;
         }
 
         return $result;
     }
 
-    /**
-     * Вспомогательный метод для обновления статуса родителя
-     */
-    private function updateParentStatus($factory, $id, $stageId, ?string $reasonForRejection = null): Result
-    {   ray('updateParentStatus', $id, $stageId, $reasonForRejection);
-
+    private function updateParentStatus($factory, int $id, string $stageId, ?string $reason = null): Result
+    {
         $parentItem = $factory->getItem($id);
-        if ($parentItem && $parentItem->getStageId() !== $stageId) {
 
-            $parentItem->setStageId($stageId);
-
-            if($reasonForRejection){
-                $parentItem->set(Mapping\EmployeeRequest::REASON_FOR_REJECTION, $reasonForRejection);
-            }
-
-            $operation = $factory->getUpdateOperation($parentItem);
-
-            return $operation->disableCheckAccess()->launch();
+        if (!$parentItem || $parentItem->getStageId() === $stageId) {
+            return new Result();
         }
 
-        return new Result();
-    }
+        $parentItem->setStageId($stageId);
 
-    private function isUserInDepartment(int $userId, int $deptId): bool
-    {
-        if ($deptId <= 0 || $userId <= 0) return false;
-
-        Loader::includeModule('main');
-        $dbUser = \CUser::GetList($by, $order, ['ID' => $userId], ['SELECT' => ['UF_DEPARTMENT']]);
-        if ($user = $dbUser->Fetch()) {
-            return in_array($deptId, (array)$user['UF_DEPARTMENT']);
+        if ($reason) {
+            $parentItem->set(EmployeeRequest::REASON_FOR_REJECTION, $reason);
         }
-        return false;
-    }
 
-    private function getHrDepartmentId(): int
-    {
-        return 40;
+        return $factory->getUpdateOperation($parentItem)->disableCheckAccess()->launch();
     }
 }

@@ -27,16 +27,21 @@ class ChangeStatus extends Action
         $erReject = Option::get($moduleId, 'ER_REJECT_STATUS');
 
         /** @var NotifyService $notifyService */
-        $notifyService = ServiceLocator::getInstance()->get('employee.requests.service.notify');
+        $notifyService = ServiceLocator::getInstance()->get('parfeon.er.service.notify');
 
         $typeName = $notifyService->getTypeName($item->get(Mapping\EmployeeRequest::TYPE));
+        $message  = '';
 
-        if($item->getStageId() === $erApprove) {
-            $message = 'Ваша '.$typeName.' согласована';
+        if ($item->getStageId() === $erApprove) {
+            $message = 'Ваша ' . $typeName . ' согласована';
         }
 
-        if($item->getStageId() === $erReject) {
-            $message = 'Ваша '.$typeName.' отклонена по причине - ' .$item->get(Mapping\EmployeeRequest::REASON_FOR_REJECTION);
+        if ($item->getStageId() === $erReject) {
+            $message = 'Ваша ' . $typeName . ' отклонена по причине: ' . $item->get(Mapping\EmployeeRequest::REASON_FOR_REJECTION);
+        }
+
+        if ($message === '') {
+            return $result;
         }
 
         $requestData = [

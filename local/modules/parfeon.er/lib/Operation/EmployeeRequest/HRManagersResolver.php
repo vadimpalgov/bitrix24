@@ -32,7 +32,6 @@ class HRManagersResolver extends Action
         if (empty($hrUserIds)) {
             return $result;
         }
-        ray('$hrUserIds', $hrUserIds);
         $item->set(EmployeeRequest::HR_MANAGERS, $hrUserIds);
 
         return $result;

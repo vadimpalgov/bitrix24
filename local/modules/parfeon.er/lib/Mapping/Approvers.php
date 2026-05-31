@@ -14,4 +14,10 @@ class Approvers
     const DATE_START = 'UF_CRM_' . self::CRM_TYPE_NUMBER . '_DATE_START';
 
     const DATE_END = 'UF_CRM_' . self::CRM_TYPE_NUMBER . '_DATE_END';
+
+    /** Фаза согласования: 1 = HR, 2 = РП, 3 = Руководители */
+    const PHASE = 'UF_CRM_' . self::CRM_TYPE_NUMBER . '_PHASE';
+
+    /** Порядковый номер в фазе 3 (последовательное согласование) */
+    const ORDER = 'UF_CRM_' . self::CRM_TYPE_NUMBER . '_ORDER';
 }

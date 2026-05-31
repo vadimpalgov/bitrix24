@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="modules/parfeon.er/lib/Tests/bootstrap.php"
+         colors="true"
+         cacheResult="false">
+
+    <testsuites>
+        <testsuite name="parfeon.er">
+            <directory>modules/parfeon.er/lib/Tests</directory>
+        </testsuite>
+    </testsuites>
+
+</phpunit>

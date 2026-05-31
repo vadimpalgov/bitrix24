@@ -9,10 +9,10 @@ use Bitrix\Crm\Service\Operation;
 use Bitrix\Main\Config\Option;
 use Parfeon\Er\Mapping\EmployeeRequest;
 use Parfeon\Er\Operation\EmployeeRequest\AddingAbsencesSchedule;
+use Parfeon\Er\Operation\EmployeeRequest\ApproverResolver;
 use Parfeon\Er\Operation\EmployeeRequest\ChangeStatus;
 use Parfeon\Er\Operation\EmployeeRequest\CreateName;
 use Parfeon\Er\Operation\EmployeeRequest\DayCountChecker;
-use Parfeon\Er\Operation\EmployeeRequest\ApproverResolver;
 use Parfeon\Er\Operation\EmployeeRequest\DayStartChecker;
 use Parfeon\Er\Operation\EmployeeRequest\DepartmentManagerResolver;
 use Parfeon\Er\Operation\EmployeeRequest\HRManagersResolver;
@@ -55,12 +55,6 @@ class EmployeeRequestFactory  extends Dynamic
             new HRManagersResolver()
         );
 
-
-        $operation->addAction(
-            Operation::ACTION_AFTER_SAVE,
-            new ApproverResolver()
-        );
-
         return $operation;
     }
 
@@ -68,9 +62,9 @@ class EmployeeRequestFactory  extends Dynamic
     {
         $operation = parent::getUpdateOperation($item, $context);
 
-        $epStart = Option::get(self::MODULE_ID, 'ER_START_STATUS');
+        $epStart   = Option::get(self::MODULE_ID, 'ER_START_STATUS');
         $epApprove = Option::get(self::MODULE_ID, 'ER_APPROVE_STATUS');
-        $epReject = Option::get(self::MODULE_ID, 'ER_REJECT_STATUS');
+        $epReject  = Option::get(self::MODULE_ID, 'ER_REJECT_STATUS');
 
         $enableMinDays = \COption::GetOptionString(self::MODULE_ID, 'LA_ENABLE_MIN_DAYS_CHECK', 'N') === 'Y';
         if($enableMinDays) {
@@ -80,7 +74,7 @@ class EmployeeRequestFactory  extends Dynamic
             );
         }
 
-        if($item->getStageId() === $epStart){
+        if($item->isChangedStageId() && $item->getStageId() === $epStart){
 
             $operation->addAction(
                 Operation::ACTION_BEFORE_SAVE,

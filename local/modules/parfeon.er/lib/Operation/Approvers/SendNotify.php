@@ -20,25 +20,20 @@ class SendNotify extends Action
         $moduleId = 'parfeon.er';
 
         /** @var NotifyService $notifyService */
-        $notifyService = ServiceLocator::getInstance()->get('employee.requests.service.notify');
+        $notifyService = ServiceLocator::getInstance()->get('parfeon.er.service.notify');
 
-        $entityTypeId = (int)Option::get($moduleId, 'ER_SMART_PROCESS_ID');
-        $apStart = Option::get($moduleId, 'AR_START_STATUS');
-        $apApprove = Option::get($moduleId, 'AP_APPROVE_STATUS');
-        $apReject = Option::get($moduleId, 'AP_REJECT_STATUS');
+        $apStart = Option::get($moduleId, 'AP_START_STATUS');
 
-        if($item->getStageId() === $apStart){
-            $message = 'На ваше имя создана новая заявка на согласование';
-        } else {
-            $message = 'Заявка изменена';
-        }
+        $message = $item->getStageId() === $apStart
+            ? 'На ваше имя создана новая заявка на согласование'
+            : 'Заявка на согласование изменена';
 
         $requestData = [
             'requestId' => $item->getId(),
-            'typeId' => $item->get(Mapping\Approvers::TYPE),
-            'message' => $message,
-            'url' => '/crm/type/'.$entityTypeId.'/details/'.$item->getId().'/',
-            'event' => 'request_approved'
+            'typeId'    => $item->get(Mapping\Approvers::TYPE),
+            'message'   => $message,
+            'url'       => '/crm/type/' . $item->getEntityTypeId() . '/details/' . $item->getId() . '/',
+            'event'     => 'approver_notify',
         ];
 
         $sendNotifyResult = $notifyService->send($item->getAssignedById(), $requestData);

@@ -17,7 +17,7 @@ class CreateName extends Action
         $result = new Result();
 
         /** @var NotifyService $notifyService */
-        $notifyService = ServiceLocator::getInstance()->get('employee.requests.service.notify');
+        $notifyService = ServiceLocator::getInstance()->get('parfeon.er.service.notify');
 
         $typeEnumId = $item->get(Mapping\EmployeeRequest::TYPE);
         $typeName = $notifyService->getTypeName($typeEnumId) ?: 'Заявка';
